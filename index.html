@@ -1,123 +1,27 @@
-<!doctype html>
-<html lang="fi">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Swimify – TV-grafiikka</title>
-<style>
-html,body{width:100%;height:100%;margin:0;padding:0;background:transparent;overflow:hidden;font-family:Arial,sans-serif;color:#fff}
-#p{width:100%;max-width:100%;min-height:100%;background:rgba(0,0,0,.80);border-radius:clamp(8px,1.4vmin,14px);padding:clamp(8px,2vmin,16px) clamp(10px,2.5vmin,20px);box-sizing:border-box}
-#e{font-size:clamp(18px,3.5vmin,28px);line-height:1.15;font-weight:bold}
-#h{font-size:clamp(13px,2.5vmin,20px);line-height:1.2;color:#ddd;margin:clamp(3px,.7vmin,4px) 0 clamp(7px,1.5vmin,12px)}
-table{width:100%;border-collapse:collapse;table-layout:auto;font-size:clamp(16px,3.2vmin,25px)}
-th{text-align:left;color:#aaa;font-size:clamp(10px,1.9vmin,15px);padding:clamp(3px,.7vmin,5px) clamp(4px,1vmin,8px);white-space:nowrap}
-td{padding:clamp(4px,1.1vmin,7px) clamp(4px,1vmin,8px);border-top:1px solid rgba(255,255,255,.12)}
-.l{width:7%;text-align:center;font-weight:bold}.t{text-align:right;width:18%;font-weight:bold;white-space:nowrap}.rank{width:8%;text-align:center;color:#aaa;font-size:clamp(10px,1.9vmin,15px)}.rankcell{text-align:center;font-weight:800;width:8%}.c{color:#bbb;font-size:clamp(11px,2.2vmin,18px)}
-.split{display:block;color:#ddd;font-size:clamp(10px,1.9vmin,15px);font-weight:500;line-height:1.35}.final{display:block;color:#39d353;font-size:clamp(13px,2.6vmin,21px);font-weight:800;line-height:1.35}
-#s{font-size:clamp(9px,1.8vmin,14px);color:#aaa;margin-top:clamp(5px,1.2vmin,10px)}.err{color:#ff8a8a}
-</style>
-</head>
-<body>
-<div id="p">
-  <div id="e">Swimify</div>
-  <div id="h">Yhdistetään Swimifyhin…</div>
-  <table><thead><tr><th class="l">Rata</th><th>Uimari</th><th>Seura</th><th class="t">Aika</th><th class="rank">Sija</th></tr></thead><tbody id="r"></tbody></table>
-  <div id="s">Yhdistetään…</div>
-</div>
+<!doctype html><html lang="fi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Swimify Live</title>
+<style>html,body{width:100%;height:100%;margin:0;background:transparent;overflow:hidden;font-family:Arial,sans-serif;color:#fff}#p{width:100%;min-height:100%;background:rgba(0,0,0,.80);border-radius:clamp(8px,1.4vmin,14px);padding:clamp(8px,2vmin,16px) clamp(10px,2.5vmin,20px);box-sizing:border-box}#e{font-size:clamp(18px,3.5vmin,28px);line-height:1.15;font-weight:bold}#h{font-size:clamp(13px,2.5vmin,20px);line-height:1.2;color:#ddd;margin:clamp(3px,.7vmin,4px) 0 clamp(7px,1.5vmin,12px)}table{width:100%;border-collapse:collapse;font-size:clamp(16px,3.2vmin,25px)}th{text-align:left;color:#aaa;font-size:clamp(10px,1.9vmin,15px);padding:clamp(3px,.7vmin,5px) clamp(4px,1vmin,8px);white-space:nowrap}td{padding:clamp(4px,1.1vmin,7px) clamp(4px,1vmin,8px);border-top:1px solid rgba(255,255,255,.12)}.l{width:7%;text-align:center;font-weight:bold}.t{text-align:right;width:18%;font-weight:bold;white-space:nowrap}.rank{width:8%;text-align:center;color:#aaa}.rankcell{text-align:center;font-weight:800;width:8%}.c{color:#bbb;font-size:clamp(11px,2.2vmin,18px)}.split{display:block;color:#ddd;font-size:clamp(10px,1.9vmin,15px);font-weight:500;line-height:1.35}.final{display:block;color:#39d353;font-size:clamp(13px,2.6vmin,21px);font-weight:800;line-height:1.35}#s{font-size:clamp(9px,1.8vmin,14px);color:#aaa;margin-top:clamp(5px,1.2vmin,10px)}.err{color:#ff8a8a}.warn{color:#ffd166}</style></head><body><div id="p"><div id="e">Swimify</div><div id="h">Yhdistetään Swimifyyn…</div><table><thead><tr><th class="l">Rata</th><th>Uimari</th><th>Seura</th><th class="t">Aika</th><th class="rank">Sija</th></tr></thead><tbody id="r"></tbody></table><div id="s">Yhdistetään…</div></div>
 <script>
-const CONFIG={
-  endpoint:'https://data-eu.swimify.com/v1/graphql',
-  competition:'0e7de999-e30c-48fe-9e6e-599eb2fe05aa',
-  apiKey:'GkK9Mjfnxq44Zjs4QamHeduqy6ABM2PLvEmkLJuGNeMShdRMhZSPW6adj78qF6BB',
-  pollMs:1000
-};
-
-let lastHeatId=null,lastEventId=null,lastRoundId=null,lastHeatNumber=null;
-const currentQuery=`query currentHeatIdsQuery_WL($id: uuid!) {
-  current_heat(where: {competition_id: {_eq: $id}}) { heat_type heat { id status } }
-}`;
-const heatQuery=`query heatByIdQuery_WL($id: Int!) {
-  heat_by_pk(id:$id) {
-    id name number status estimated_start_time start_time
-    lanes(order_by:{number:asc}) {
-      id number heat_rank qualification entry_time_text reaction_time result_text fina_points wps_points dns dnf dsq dq_code dq_relay_swimmer note swimmed_distance not_in_competition
-      competitor { id oid code is_relay full_name first_name last_name full_name_reversed birthday age country_code is_para para_class_free para_class_breast para_class_medley not_in_competition club { id oid code name short_name country_code } }
-      relay_competitors(order_by:{order:asc}) { id oid order competitor { id oid first_name last_name full_name birthday age } }
-      sub_results(order_by:{order:asc}) { id done_at order split_diff_text result_value_text result_value split_diff take_over }
-    }
-    time_program_entry { id oid name type round { id name event { id name number is_relay is_para_event distance athlete_count event_competition_level event_type } } }
-  }
-}`;
-const nearbyQuery=`query nearbyHeats($startId:Int!) {
-  heat(where:{id:{_gte:$startId}},order_by:{id:asc},limit:12) {
-    id number status time_program_entry { round { id name event { id number name } } }
-  }
-}`;
-
-function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
-async function gql(query,variables){
-  const r=await fetch(CONFIG.endpoint,{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','x-hasura-public-secret-key':CONFIG.apiKey},body:JSON.stringify({query,variables})});
-  if(!r.ok)throw new Error(`HTTP ${r.status}`);
-  const d=await r.json();
-  if(d.errors?.length)throw new Error(d.errors.map(e=>e.message).join('; '));
-  return d.data;
-}
+const ENDPOINT='https://data-eu.swimify.com/v1/graphql';
+const COMPETITION="0e7de999-e30c-48fe-9e6e-599eb2fe05aa";
+const API_KEY="GkK9Mjfnxq44Zjs4QamHeduqy6ABM2PLvEmkLJuGNeMShdRMhZSPW6adj78qF6BB";
+const currentQuery="query currentHeatIdsQuery_WL($id: uuid!) {\n  current_heat(where: {competition_id: {_eq: $id}}) {\n    heat_type\n    heat {\n      id\n      status\n    }\n  }\n}";
+const heatQuery="query heatByIdQuery_WL($id: Int!) {\n  heat_by_pk(id:$id) {\n    id name number status estimated_start_time start_time\n    lanes(order_by:{number:asc}) {\n      id number heat_rank qualification entry_time_text reaction_time result_text\n      fina_points wps_points dns dnf dsq dq_code dq_relay_swimmer note swimmed_distance not_in_competition\n      competitor {\n        id oid code is_relay full_name first_name last_name full_name_reversed birthday age country_code is_para\n        para_class_free para_class_breast para_class_medley not_in_competition\n        club { id oid code name short_name country_code }\n      }\n      relay_competitors(order_by:{order:asc}) {\n        id oid order competitor { id oid first_name last_name full_name birthday age }\n      }\n      sub_results(order_by:{order:asc}) {\n        id done_at order split_diff_text result_value_text result_value split_diff take_over\n      }\n    }\n    time_program_entry {\n      id oid name type\n      round {\n        id name\n        event { id name number is_relay is_para_event distance athlete_count event_competition_level event_type }\n      }\n    }\n  }\n}";
+const nearbyQuery="query nearbyHeats($startId:Int!) {\n  heat(\n    where:{id:{_gte:$startId}}\n    order_by:{id:asc}\n    limit:12\n  ) {\n    id\n    number\n    status\n    time_program_entry {\n      round {\n        id\n        event { id number name }\n      }\n    }\n  }\n}";
+let lastHeatId=null,lastEventId=null,lastRoundId=null;
+function x(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+async function gql(query,variables){const r=await fetch(ENDPOINT,{method:'POST',mode:'cors',cache:'no-store',headers:{'Content-Type':'application/json','x-hasura-public-secret-key':API_KEY},body:JSON.stringify({query,variables})}); if(!r.ok) throw new Error('HTTP '+r.status); const j=await r.json(); if(j.errors?.length) throw new Error(j.errors.map(e=>e.message).join('; ')); return j.data;}
 async function getHeat(id){return (await gql(heatQuery,{id:Number(id)})).heat_by_pk;}
 async function getAutoHeat(){
-  const d=await gql(currentQuery,{id:CONFIG.competition});
-  const rows=Array.isArray(d?.current_heat)?d.current_heat:[];
-  if(!rows.length)return null;
-  const candidates=[];
-  for(const row of rows){if(row?.heat?.id){try{const h=await getHeat(row.heat.id);if(h)candidates.push(h)}catch(e){}}}
-  if(!candidates.length)return null;
-  if(lastHeatId){const same=candidates.find(h=>Number(h.id)===Number(lastHeatId));if(same)return same;}
-  if(lastHeatId&&lastEventId&&lastRoundId){
-    try{
-      const near=await gql(nearbyQuery,{startId:Number(lastHeatId)+1});
-      for(const n of (near?.heat||[])){
-        const ev=n?.time_program_entry?.round?.event,rd=n?.time_program_entry?.round;
-        if(ev&&rd&&Number(ev.id)===Number(lastEventId)&&Number(rd.id)===Number(lastRoundId)&&Number(n.id)>Number(lastHeatId)){
-          const h=await getHeat(n.id);if(h)return h;
-        }
-      }
-    }catch(e){}
-  }
-  const running=candidates.filter(h=>/RUN|SWIM|START|ACTIVE|IN_PROGRESS|INPROGRESS/i.test(String(h.status||''))).sort((a,b)=>Number(a.id)-Number(b.id));
-  if(running.length)return running[0];
-  if(candidates.length===1)return candidates[0];
-  const greater=candidates.filter(h=>Number(h.id)>Number(lastHeatId||-Infinity)).sort((a,b)=>Number(a.id)-Number(b.id));
-  return greater[0]||candidates.sort((a,b)=>Number(b.id)-Number(a.id))[0];
+ const d=await gql(currentQuery,{id:COMPETITION}), rows=d.current_heat||[]; if(!rows.length)return null;
+ const candidates=[]; for(const row of rows){if(row.heat?.id){try{const h=await getHeat(row.heat.id);if(h)candidates.push(h)}catch(e){}}}
+ if(!candidates.length)return null;
+ if(lastHeatId){const same=candidates.find(h=>Number(h.id)===Number(lastHeatId));if(same)return same;}
+ if(lastHeatId&&lastEventId&&lastRoundId){try{const n=(await gql(nearbyQuery,{startId:Number(lastHeatId)+1})).heat||[];for(const z of n){const ev=z.time_program_entry?.round?.event,rd=z.time_program_entry?.round;if(Number(ev?.id)===Number(lastEventId)&&Number(rd?.id)===Number(lastRoundId)&&Number(z.id)>Number(lastHeatId)){const h=await getHeat(z.id);if(h)return h;}}}catch(e){}}
+ const running=candidates.filter(h=>/RUN|SWIM|START|ACTIVE|IN_PROGRESS|INPROGRESS/i.test(String(h.status||''))); if(running.length)return running.sort((a,b)=>Number(a.id)-Number(b.id))[0];
+ if(candidates.length===1)return candidates[0];
+ const greater=candidates.filter(h=>Number(h.id)>Number(lastHeatId||-1)).sort((a,b)=>Number(a.id)-Number(b.id)); return greater[0]||candidates.sort((a,b)=>Number(b.id)-Number(a.id))[0];
 }
-function draw(h){
-  const e=h?.time_program_entry?.round?.event;
-  document.querySelector('#e').textContent=(e?.name||'Swimify')+(e?.number?' #'+e.number:'');
-  document.querySelector('#h').textContent=(h?.name||'Erä')+(h?.number?' - Erä '+h.number:'');
-  document.querySelector('#r').innerHTML=(h?.lanes||[]).map(l=>{
-    const c=l.competitor||{},n=c.full_name||[c.first_name,c.last_name].filter(Boolean).join(' ')||'—';
-    const club=c.club?.short_name||c.club?.name||c.country_code||'';
-    let final=l.result_text||l.entry_time_text||'';
-    if(l.dns)final='DNS';else if(l.dnf)final='DNF';else if(l.dsq)final='DSQ';
-    const subs=Array.isArray(l.sub_results)?l.sub_results.filter(z=>z&&((z.result_value_text!=null&&z.result_value_text!=='')||(z.split_diff_text!=null&&z.split_diff_text!==''))):[];
-    let splitHtml='';
-    // During the swim show only the newest split. At finish show only the final time.
-    const hasFinal=!!(l.result_text||l.dns||l.dnf||l.dsq);
-    if(!hasFinal&&subs.length){const z=subs[subs.length-1],tm=z.result_value_text||z.split_diff_text||'',ord=Number.isFinite(Number(z.order))?Number(z.order):subs.length,dist=50*ord;splitHtml=`<span class="split">${esc(tm)} (${dist}m)</span>`;}
-    const finalHtml=hasFinal?`<span class="final">${esc(final)}</span>`:'';
-    const rank=(l.heat_rank!=null&&l.heat_rank!==''&&!l.dns&&!l.dnf&&!l.dsq)?l.heat_rank:'—';
-    return `<tr><td class="l">${esc(l.number)}</td><td>${esc(n)}</td><td class="c">${esc(club)}</td><td class="t">${splitHtml}${finalHtml}</td><td class="rankcell">${esc(rank)}</td></tr>`;
-  }).join('');
-}
-async function go(){
-  const s=document.querySelector('#s');
-  try{
-    const h=await getAutoHeat();
-    if(!h){document.querySelector('#h').textContent='Ei käynnissä olevaa erää';document.querySelector('#r').innerHTML='';s.textContent='Odotetaan erää…';s.className='';return;}
-    lastHeatId=Number(h.id);lastHeatNumber=Number(h.number);lastRoundId=Number(h?.time_program_entry?.round?.id||0);lastEventId=Number(h?.time_program_entry?.round?.event?.id||0);
-    draw(h);
-    s.textContent='Swimify-yhteys OK - automaattinen eräseuranta - '+new Date().toLocaleTimeString('fi-FI');s.className='';
-  }catch(e){s.textContent='Swimify-yhteys: '+e.message;s.className='err';}
-}
-go();setInterval(go,CONFIG.pollMs);
-</script>
-</body>
-</html>
+function draw(h){const e=h?.time_program_entry?.round?.event;document.querySelector('#e').textContent=(e?.name||'Swimify')+(e?.number?' #'+e.number:'');document.querySelector('#h').textContent=(h?.name||'Erä')+(h?.number?' - Erä '+h.number:'');document.querySelector('#r').innerHTML=(h?.lanes||[]).map(l=>{const c=l.competitor||{},n=c.full_name||[c.first_name,c.last_name].filter(Boolean).join(' ')||'—',club=c.club?.short_name||c.club?.name||c.country_code||'';let final=l.result_text||'';if(l.dns)final='DNS';else if(l.dnf)final='DNF';else if(l.dsq)final='DSQ';const subs=Array.isArray(l.sub_results)?l.sub_results.filter(z=>z&&((z.result_value_text??'')!==''||(z.split_diff_text??'')!=='')):[];let splitHtml='';if(!l.dns&&!l.dnf&&!l.dsq&&subs.length){const z=subs[subs.length-1],tm=z.result_value_text||z.split_diff_text||'',ord=Number.isFinite(Number(z.order))?Number(z.order):subs.length,dist=50*ord;splitHtml=`<span class="split">${x(tm)} (${dist}m)</span>`;}const rank=(l.heat_rank!=null&&l.heat_rank!==''&&!l.dns&&!l.dnf&&!l.dsq)?l.heat_rank:'—';return `<tr><td class="l">${x(l.number)}</td><td>${x(n)}</td><td class="c">${x(club)}</td><td class="t">${splitHtml}<span class="final">${x(final)}</span></td><td class="rankcell">${x(rank)}</td></tr>`;}).join('');}
+async function go(){const s=document.querySelector('#s');try{const h=await getAutoHeat();if(!h){document.querySelector('#h').textContent='Ei käynnissä olevaa erää';document.querySelector('#r').innerHTML='';s.textContent='Swimify-yhteys OK – aktiivista erää ei löytynyt';s.className='';return;}lastHeatId=Number(h.id);lastEventId=Number(h.time_program_entry?.round?.event?.id||0);lastRoundId=Number(h.time_program_entry?.round?.id||0);draw(h);s.textContent='Swimify-yhteys OK – '+new Date().toLocaleTimeString('fi-FI');s.className='';}catch(e){console.error(e);s.textContent='Swimify-yhteys: '+e.message;s.className='err';}}
+go();setInterval(go,1000);
+</script></body></html>
